@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"encoding/xml"
 	"io"
@@ -15,8 +16,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/Sirupsen/logrus"
-	pushbullet "github.com/mitsuse/pushbullet-go"
-	"github.com/mitsuse/pushbullet-go/requests"
 )
 
 var idx int64
@@ -62,23 +61,39 @@ $(function(){
 </html>
 `
 
-func PushBulletInit(token string) func(title, body string) error {
-	pb := pushbullet.New(token)
+func notify(title, msg string) error {
+	key := os.Getenv("NOTIFY_KEY")
 
-	return func(title, body string) error {
-		note := requests.NewNote()
+	type Payload struct {
+		Value1 string `json:"value1"`
+		Value2 string `json:"value2"`
+		Value3 string `json:"value3"`
+	}
 
-		note.Body = body
-		note.Title = title
-
-		_, err := pb.PostPushesNote(note)
-
-		if err != nil {
-			logrus.WithError(err).Error("PushBullet error")
-		}
-
+	data := Payload{
+		Value1: title,
+		Value2: msg,
+		Value3: os.Args[0],
+	}
+	payloadBytes, err := json.Marshal(data)
+	if err != nil {
 		return err
 	}
+	body := bytes.NewReader(payloadBytes)
+
+	req, err := http.NewRequest("POST", "https://maker.ifttt.com/trigger/notify/with/key/"+key, body)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	return nil
 }
 
 type ServerInfo struct {
@@ -106,12 +121,8 @@ type Ag struct {
 }
 
 func main() {
-	pbToken := os.Getenv("PB_TOKEN")
-
 	logrus.SetLevel(logrus.DebugLevel)
 	clients = make(map[int64]chan []byte)
-
-	notify := PushBulletInit(pbToken)
 
 	if notify("Notification Test", "Server started") != nil {
 		os.Exit(1)
