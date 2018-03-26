@@ -64,6 +64,12 @@ $(function(){
 func notify(title, msg string) error {
 	key := os.Getenv("NOTIFY_KEY")
 
+	if key == "" {
+		logrus.Warn("NOTIFY_KEY is not set. You should use this.")
+
+		return nil
+	}
+
 	type Payload struct {
 		Value1 string `json:"value1"`
 		Value2 string `json:"value2"`
@@ -177,6 +183,8 @@ func main() {
 	}
 
 	var url ServerInfo
+	var prev time.Time
+	var counter int
 	init := func() (*exec.Cmd, io.ReadCloser, error) {
 		newURL, err := rtmpURLGet()
 
@@ -186,6 +194,19 @@ func main() {
 
 		if err == nil && url != *newURL {
 			notify("NOTIFICATION", "URL has been changed from "+url.String()+" to "+newURL.String())
+
+			counter = 0
+		}
+
+		if time.Now().Sub(prev) >= 20*time.Minute {
+			counter = 0
+		}
+		prev = time.Now()
+
+		counter++
+
+		if counter > 5 {
+			time.Sleep(10 * time.Minute)
 		}
 
 		url = *newURL
