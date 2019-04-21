@@ -1,10 +1,12 @@
-FROM golang
+FROM golang:1.12 as build
 
-COPY . $GOPATH/src/github.com/cs3238-tsuzu/agqrrecorder
+RUN go get github.com/cs3238-tsuzu/agqrBroadcaster
+
+FROM golang:1.12
+
+COPY --from=build /go/bin/agqrBroadcaster /bin/
 RUN apt-get update && \
-    apt-get install -y wget curl rtmpdump xz-utils ffmpeg && \
-    mkdir -p $GOPATH/src/github.com/cs3238-tsuzu/agqrrecorder && \
-    go get github.com/cs3238-tsuzu/agqrrecorder
+    apt-get install -y wget curl rtmpdump xz-utils ffmpeg
 
 EXPOSE 80
-ENTRYPOINT agqrrecorder
+ENTRYPOINT agqrBroadcaster
