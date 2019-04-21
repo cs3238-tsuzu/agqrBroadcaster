@@ -130,7 +130,8 @@ func main() {
 	logrus.SetLevel(logrus.DebugLevel)
 	clients = make(map[int64]chan []byte)
 
-	if notify("Notification Test", "Server started") != nil {
+	if err := notify("Notification Test", "Server started"); err != nil {
+		logrus.Error(err)
 		os.Exit(1)
 	}
 
